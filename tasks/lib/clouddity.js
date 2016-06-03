@@ -7,7 +7,7 @@
 var pkgcloud = require("pkgcloud"), _ = require("underscore"), grunt = require("grunt");
 var async = require("async"), exec = require("child_process").exec;
 var Docker = require("dockerode"), querystring = require("querystring");
-var utils = require("../lib/utils");
+var utils = require("./utils");
 var exec = require("child_process").exec;
 
 /**
