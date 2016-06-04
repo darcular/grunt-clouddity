@@ -52,7 +52,7 @@ module.exports = function (grunt) {
         };
 
         // Merge clients configuration parameters with cmd options
-        args = _.union([grunt, options, callback], args);
+        args = _.union([grunt, config, callback], args);
         taskFunction.apply(this, args);
     };
 
