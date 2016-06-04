@@ -24,7 +24,6 @@ module.exports = function (grunt) {
         require("./lib/docker"),
         require("./lib/securitygroup")
     );
-    console.log(funcModule);
 
     /**
      * Load configurations for this plugin and prepare other arguments.
