@@ -37,3 +37,4 @@ sensitive.json
 
 # Temporary files
 tmp
+/.project
