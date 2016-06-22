@@ -1,226 +1,303 @@
 /**
- * Task functions to manage host node
- *
  * @author Yikai Gong
  */
+var _ = require('underscore'), async = require("async");
+var exec = require('child_process').exec, pkgcloud = require("pkgcloud");
+var logUpdate = require('log-update');
+var utils = require("../../utils/utils");
 
-"use strict";
+var node = {};
 
-var pkgcloud = require("pkgcloud"), _ = require("underscore"), grunt = require("grunt");
-var async = require("async"), exec = require("child_process").exec;
-var querystring = require("querystring");
-var utils = require("../utils/utils");
+node.create = function (grunt, options, gruntDone) {
+  grunt.log.ok("Started creating node...");
+  var client = pkgcloud.compute.createClient(options.pkgcloud.client);
+  var nodes = {};
+  var tableUpdater = setInterval(function () {
+    logUpdate(composeNodesTable(nodes));
+  }, 1000);
+  var iterator = function (node, iterationDone) {
+    var serverConfig = {
+      tenantId: options.pkgcloud.client.tenantName,
+      security_groups: utils.composeClusterSecGrpNameList(options.cluster, node.securitygroups),
+      user_data: options.pkgcloud.user_data,
+      availability_zone: options.pkgcloud.availability_zone,
+      imageRef: node.imageRef,
+      flavorRef: node.flavorRef,
+      name: node.name,
+      key_name: options.pkgcloud.key_name
+    };
+    client.createServer(serverConfig, function (err, result) {
+      if (err)
+        return utils.handleErr(err, iterationDone, false);
+      var created = false;
+      var updateTuple = function (callback) {
+        utils.queryNode(options, result.id, function (err, node) {
+          if (err) {
+            return utils.handleErr(err, iterationDone, true);
+          }
+          var nodeTuple = {};
+          nodeTuple.hostId = node.id.substr(0, 5) + "..";
+          nodeTuple.hostName = node.name;
+          nodeTuple.hostAddress = node.address;
+          var hostStatus = node.status.toUpperCase();
+          nodeTuple.hostStatus = changeStatusColor(hostStatus);
+          nodes[nodeTuple.hostId] = nodeTuple;
+          if (hostStatus == "RUNNING") {
+            created = true;
+          } else {
+            created = false;
+          }
+          return callback();
+        });
+      };
+      async.until(
+        function () {
+          return created
+        },
+        function (callback) {
+          setTimeout(function () {
+            return updateTuple(callback);
+          }, 3000)
+        },
+        function (err) {
+          return err ?
+            utils.handleErr(err, iterationDone, false) :
+            iterationDone();
+        }
+      );
+    });
+  };
+  var iteratorStopped = function (err) {
+    clearInterval(tableUpdater);
+    logUpdate(composeNodesTable(nodes));
+    logUpdate.done();
+    if (err)
+      return utils.handleErr(err, gruntDone, false);
+    grunt.log.ok("Done creating nodes.");
+    return gruntDone();
+  };
+  async.each(utils.getDefinedNodes(options), iterator, iteratorStopped);
+};
+node.create.description = "Create node VMs of cluster";
 
 /**
  * List all the nodes in the cluster
  *
- * @param {Object}
+ * @param {Object} grunt
  *          grunt The Grunt instance
- * @param {Object}
+ * @param {Object} options
  *          options The task parameters
- * @param {Function}
+ * @param {Function} gruntDone
  *          done Callback to call when the requests are completed
  */
-module.exports.listnodes = function(grunt, options, done) {
-
-    if (!grunt.option("hosts-format")) {
-        grunt.log.ok("name,id,address,images...");
-    }
-
-    utils.iterateOverClusterNodes(options, function(node, next) {
-        if (!grunt.option("hosts-format")) {
-            grunt.log.ok([ node.node.name, node.node.id, node.node.address,
-                _.pluck(node.images, "name") ].join(","));
-        } else {
-            console.log([ node.node.address, node.node.name ].join(" "));
-        }
-        return next();
-    }, function(err) {
-        utils.dealWithError(err, function(err) {
-        });
-        done();
-    });
+node.list = function (grunt, options, gruntDone) {
+  var nodes = {};
+  var iterator = function (node, iterationDone) {
+    var nodeTuple = {};
+    nodeTuple.hostId = node.id.substr(0, 5) + "..";
+    nodeTuple.hostName = node.name;
+    nodeTuple.hostAddress = node.address;
+    var hostStatus = node.status.toUpperCase();
+    nodeTuple.hostStatus = changeStatusColor(hostStatus);
+    nodes[nodeTuple.hostId] = nodeTuple;
+    return iterationDone();
+  };
+  var iteratorStopped = function (err) {
+    if (err)
+      return utils.handleErr(err, gruntDone, false);
+    console.log(composeNodesTable(nodes));
+    return gruntDone();
+  };
+  utils.iterateOverClusterNodes(options, "", iterator, iteratorStopped, true);
 };
-
-/**
- * Creates the VMs that are defined in options.nodetypes
- *
- * @param {Object}
- *          grunt The Grunt instance
- * @param {Object}
- *          options The task parameters
- * @param {Function}
- *          done Callback to call when the requests are completed
- */
-module.exports.createnodes = function(grunt, options, done) {
-
-    grunt.log.ok("Started creating nodes...");
-
-    async.each(utils.getDefinedNodes(options), function(node, callback) {
-
-        pkgcloud.compute.createClient(options.pkgcloud.client).createServer(
-            {
-                tenantId : options.pkgcloud.client.tenantName,
-                security_groups : utils.securityGroupsAsOpenstack(options.cluster,
-                    node.securitygroups),
-                user_data : options.pkgcloud.user_data,
-                availability_zone : options.pkgcloud.availability_zone,
-                imageRef : node.imageRef,
-                flavorRef : node.flavorRef,
-                name : node.name,
-                key_name : options.pkgcloud.key_name
-            }, function(err, result) {
-                utils.dealWithError(err, callback);
-                if (!err) {
-                    grunt.log.ok("Created node: " + result.name + " " + result.id);
-                    return callback(err);
-                }
-            });
-    }, function(err) {
-        grunt.log.ok("Done creating nodes.");
-        if (err) {
-            return done(err);
-        }
-        done();
-    });
-};
+node.list.description = "List nodes of cluster";
 
 /**
  * Deletes the VMs that are defined in options.serverstypes. The servers to be
  * deleted are found by their names (a compistion of servertypes.name, an hypen,
  * and a progressive number.
  *
- * @param {Object}
+ * @param {Object} grunt
  *          grunt The Grunt instance
- * @param {Object}
+ * @param {Object} options
  *          options Task options
- * @param {Function}
+ * @param {Function} gruntDone
  *          done Callback to call when the request is completed
  */
-module.exports.destroynodes = function(grunt, options, done) {
-
-    grunt.log.ok("Started deleting nodes...");
-
-    utils.iterateOverClusterNodes(options, function(node, callback) {
-        pkgcloud.compute.createClient(options.pkgcloud.client).destroyServer(
-            node.node.id, function(err, result) {
-                utils.dealWithError(err, callback);
-                if (!err) {
-                    grunt.log.ok("Deleted node: " + result.ok);
-                    return callback(err);
+node.destroy = function (grunt, options, gruntDone) {
+  async.waterfall([
+    // First: Get user confirm
+    function (next) {
+      promptBeforeDestroy(function (comfirmed) {
+        return next(null, comfirmed);
+      });
+    },
+    // Second: delete nodes based on user's confirm
+    function (confirm, next) {
+      if (!confirm) {
+        return next(new Error("User Aborted"));
+      }
+      grunt.log.ok("Started deleting nodes...");
+      var iterator = function (node, iterationDone) {
+        var client = pkgcloud.compute.createClient(options.pkgcloud.client);
+        client.destroyServer(node.id, function (err, result) {
+          if (err)
+            return utils.handleErr(err, iterationDone, true);
+          var deleted = false;
+          async.until(
+            function () {
+              return deleted
+            },
+            function (callback) {
+              utils.queryNode(options, node.id, function (err, node) {
+                if (err && err.statusCode == 404) {
+                  deleted = true;
+                  return callback();
+                } else {
+                  return callback(err);
                 }
-            });
-    }, function(err) {
-        grunt.log.ok("Done deleting nodes.");
-        if (err) {
-            return done(err);
-        }
-        done();
-    });
-};
-
-/**
- * Copy data from the client machines to the nodes volumes using the scp
- * command. NOTE: it has to run after the nodes have been created
- *
- * @param {Object}
- *          grunt The Grunt instance
- * @param {Object}
- *          options The task parameters
- * @param {Function}
- *          done Callback to call when the requests are completed
- */
-module.exports.copytohost = function(grunt, options, done) {
-
-    /*
-     * Copies data to the node machine
-     */
-    var copyIterator = function(node, nextNode) {
-        node.copytohost = _.find(options.nodetypes, function(nodetype) {
-            return nodetype.name === node.node.type
-        }).copytohost;
-
-        // If no volumes are defined, skips
-        if (!node.copytohost || node.copytohost.length === 0) {
-            return nextNode();
-        }
-
-        grunt.log.ok("Started copying volume on node " + node.node.name);
-
-        async.eachSeries(node.copytohost,
-            function(volume, nextVolume) {
-
-                var recursiveOption = require("fs").lstatSync(volume.from)
-                    .isDirectory() ? "-r" : "";
-                exec("scp " + recursiveOption + " -o StrictHostKeyChecking=no -i "
-                    + options.ssh.privateKeyFile + " " + volume.from + " "
-                    + options.ssh.username + "@" + node.node.address + ":"
-                    + volume.to, function(err, stdout, stderr) {
-                    nextVolume(err);
-                });
-            }, function(err) {
-                nextNode(err);
-            });
-    };
-
-    // Copies data as defined in options and present in the cluster
-    utils.iterateOverClusterNodes(options, copyIterator, function(err) {
-        utils.dealWithError(err, done);
-        grunt.log.ok("Completed copying volumes");
-        done();
-    });
-};
-
-
-/**
- * Add all hosts in the cluster to the /etc/hosts of every node
- *
- * @param {Object}
- *          grunt The Grunt instance
- * @param {Object}
- *          options The task parameters
- * @param {Function}
- *          done Callback to call when the requests are completed
- */
-module.exports.addhosts = function(grunt, options, done) {
-
-    var hosts = [];
-    var username = options.pkgcloud.client.sshusername;
-    var sshExec = function(address, cmd, callback) {
-        exec([ "ssh", username + "@" + address, "-C" ].concat(cmd).join(" "),
-            callback);
-    };
-
-    grunt.log.ok("Started changing hosts file...");
-
-    // Puts in host the nodes names and IP addresses
-    utils.iterateOverClusterNodes(options, function(node, nextNode) {
-        hosts.push(node.node.address + " " + node.node.name);
-        return nextNode();
-    }, function(err) {
-        utils.dealWithError(err, done);
-
-        // Adds hosts to the /etc/hosts of every node
-        utils.iterateOverClusterNodes(options, function(node, next) {
-
-            sshExec(node.node.address, "'echo \"" + hosts.join("\n")
-                + "\" > /tmp/hosts && cat /etc/hosts >> /tmp/hosts'", function(err,
-                                                                               stdout, stderr) {
-                sshExec(node.node.address, "'sudo cp /tmp/hosts /etc/hosts'", function(
-                    err, stdout, stderr) {
-                    utils.dealWithError(err, function(err) {
-                    });
-                    grunt.log.ok("Done appending hosts to " + node.node.name);
-                    next();
-                });
-
-            });
-        }, function(err) {
-            utils.dealWithError(err, function(err) {
-            });
-            grunt.log.ok("Done appending hosts");
-            done();
+              });
+            },
+            function (err) {
+              if (err) {
+                return utils.handleErr(err, iterationDone, false);
+              } else {
+                grunt.log.ok("Deleted node: " + result.ok);
+                return iterationDone();
+              }
+            }
+          );
         });
-    });
-
+      };
+      var iteratorStopped = function (err) {
+        return next(err);
+      };
+      utils.iterateOverClusterNodes(options, null, iterator, iteratorStopped, false);
+    }
+  ], function (err) {
+    if (err)
+      return utils.handleErr(err, gruntDone, false);
+    grunt.log.ok("Done deleting nodes.");
+    return gruntDone();
+  })
 };
+node.destroy.description = "Destroy node VMs of cluster";
+
+/**
+ * Add all hosts in the cluster to the /etc/hosts of every ACTIVE node
+ *
+ * @param {Object} grunt
+ *          grunt The Grunt instance
+ * @param {Object} options
+ *          options The task parameters
+ * @param {Function} gruntDone
+ *          done Callback to call when the requests are completed
+ */
+node.dns = function (grunt, options, gruntDone) {
+  // Check configuration file
+  try {
+    var username = options.pkgcloud.client.sshusername;
+  } catch (err) {
+    grunt.fail.warn("user name for ssh has not been defined");
+    return gruntDone(err);
+  }
+  grunt.log.ok("Started updating /etc/hosts file on each ACTIVE node ...");
+  // Serial Asynchronous works start
+  async.waterfall([
+    // Get cluster nodes's ip-name pair
+    function (next) {
+      var hosts = [];
+      var iterator = function (node, iterationDone) {
+        hosts.push(node.ipv4 + " " + node.name);
+        return iterationDone();
+      };
+      var iteratorStopped = function (err) {
+        return err ? utils.handleErr(err, next, false) : next(null, hosts);
+      };
+      utils.iterateOverClusterNodes(options, "", iterator, iteratorStopped, true);
+    },
+    // Edit hosts file on each ALIVE node
+    function (hosts, next) {
+      var iterator = function (node, iterationDone) {
+        var dnsHead = "# Cluster " + options.cluster + " DNS Settings Start";
+        var dnsEnd = "# Cluster " + options.cluster + " DNS Settings End";
+        var contentToAppend = dnsHead + "\n" + hosts.join("\n") + "\n" + dnsEnd;
+        var cmdRemoveOldSettings = "sudo sed -i '/" + dnsHead + "/,/" + dnsEnd + "/d' /etc/hosts";
+        var cmdAppendSettings = "sudo echo '" + contentToAppend + "' | cat - /etc/hosts > temp && sudo mv temp /etc/hosts";
+        var cmdStr = cmdRemoveOldSettings + " && " + cmdAppendSettings;
+        sshExec(username, node.ipv4, cmdStr, function (err) {
+          utils.handleErr(err, iterationDone, true);
+          grunt.log.ok("Done appending hosts to " + node.name);
+          return iterationDone();
+        });
+      };
+      var iteratorStopped = function (err) {
+        return err ? utils.handleErr(err, next, false) : next(null);
+      };
+      utils.iterateOverClusterNodes(options, "active", iterator, iteratorStopped, false)
+    }
+  ], function (err) {
+    return err ? utils.handleErr(err, gruntDone, false) : gruntDone();
+  });
+};
+node.dns.description = "Build local DNS for all cluster nodes"
+
+module.exports.node = node;
+
+function composeNodesTable(nodes) {
+  var nodesList = _.toArray(nodes);
+  var sortedNodesList = _.sortBy(nodesList, "hostName");
+  var nodePutleList = _.map(sortedNodesList, function (nodeTuple) {
+    return _.toArray(nodeTuple);
+  })
+  var Table = require('cli-table');
+  var table = new Table({
+    head: ['Id'.cyan, 'Name'.cyan, 'Zone:Ipv4'.cyan, 'Status'.cyan],
+    colWidths: [],
+    style: {compact: true, 'padding-left': 0, 'padding-right': 0},
+    chars: {
+      'top': '═', 'top-mid': '╤', 'top-left': '╔', 'top-right': '╗'
+      , 'bottom': '═', 'bottom-mid': '╧', 'bottom-left': '╚', 'bottom-right': '╝'
+      , 'left': '║', 'left-mid': '╟', 'mid': '─', 'mid-mid': '┼'
+      , 'right': '║', 'right-mid': '╢', 'middle': '│'
+    }
+  });
+  table.push.apply(table, nodePutleList);
+  return table.toString();
+}
+
+function changeStatusColor(hostStatus) {
+  switch (hostStatus) {
+    case 'RUNNING':
+      hostStatus = hostStatus.green;
+      break;
+    case 'PROVISIONING':
+    case 'UPDATING':
+    case 'REBOOT':
+      hostStatus = hostStatus.yellow;
+      break;
+    default:
+      hostStatus = hostStatus.red;
+      break;
+
+  }
+  return hostStatus;
+}
+
+function promptBeforeDestroy(callback) {
+  var rl = require("readline").createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  rl.question("Going to destroy all cluster nodes. Are you sure? (y/N)", function (answer) {
+    if (!(answer.toUpperCase() == "Y" || answer.toUpperCase() == "YES")) {
+      return callback(false);
+    } else {
+      return callback(true);
+    }
+  })
+}
+
+function sshExec(username, address, cmd, callback) {
+  exec(["ssh", '-o "StrictHostKeyChecking no"', username + "@" + address, "-C"].concat('"' + cmd + '"').join(" "), callback);
+}

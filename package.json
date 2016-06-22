@@ -8,25 +8,24 @@
     "email" : "lmorandini@ieee.org"
   },
   "engines" : {
-    "node" : "= 0.10.0"
+    "node" : ">= 0.10.0"
   },
+  "keywords": [
+    "nodejs",
+    "grunt",
+    "cloudpkg",
+    "dockerode"
+  ],
   "dependencies" : {
-    "async" : "1.5.0",
-    "grunt" : "^0.4.5",
-    "grunt-contrib-clean" : "^0.6.0",
-    "grunt-contrib-copy" : "^0.8.1",
-    "grunt-contrib-watch" : "^0.6.1",
-    "grunt-dock" : "git+https://github.com/lmoran/grunt-dock.git#master",
-    "dockerode" : "git+https://github.com/lmoran/dockerode#master",
-    "grunt-ejs" : "^0.3.0",
-    "grunt-pkgcloud" : "git+https://github.com/lmoran/grunt-pkgcloud#master",
-    "pkgcloud" : "git+https://github.com/lmoran/pkgcloud#master",
-    "underscore" : "1.8.3"
+    "async": "^1.5.2",
+    "cli-table": "^0.3.1",
+    "dockerode": "git+https://github.com/lmoran/dockerode#master",
+    "log-update": "^1.0.2",
+    "pkgcloud": "git+https://github.com/lmoran/pkgcloud#master",
+    "underscore": "^1.8.3"
   },
   "devDependencies" : {
-    "mocha": "~1.12.0",
-    "chai": "3.4.1",
-    "sandboxed-module": "2.0.3"
+    "grunt": "~0.4.5"
   },
   "scripts" : {
       "test": "./node_modules/mocha/bin/mocha --reporter spec --no-colors ./test/test-*.js"
