@@ -82,7 +82,7 @@ docker.pull = function (grunt, options, gruntDone) {
       return gruntDone();
     }, false);
 };
-docker.pull.description="Pull images into every cluster node";
+docker.pull.description = "Pull images into every cluster node";
 
 /**
  * Creates the Docker containers for all the nodes and images in the cluster
@@ -156,9 +156,12 @@ docker.run = function (grunt, options, done) {
     // ["scats-1-master:115.146.95.194","scats-1-slave:115.146.95.192","dockerhost:115.146.95.192","sparkslave:115.146.95.192","sparkmaster:115.146.95.194"]
     // ["scats-1-master:115.146.95.194","scats-1-slave:115.146.95.192","dockerhost:115.146.95.194","sparkmaster:115.146.95.194"]
 
-    var args = [hosts.join(',')].concat(image.options.run.cmd);
+    var cluster_env = "CLUSTER_NODES_LIST=" + hosts.join(',');
+    createOptions.Env = createOptions.Env
+      ? createOptions.Env.concat(cluster_env)
+      : [cluster_env];
     var streamo = (new Docker(image.node.docker)).run(image.repo,
-      args, null, createOptions, image.options.run.start,
+      image.options.run.cmd, null, createOptions, image.options.run.start,
       function (err, data, container) {
         utils.handleErr(err, function (err) {
         }, true);
@@ -230,7 +233,7 @@ docker.run = function (grunt, options, done) {
     true
   );
 };
-docker.run.description="Run images on cluster every node";
+docker.run.description = "Run images on cluster every node";
 
 /**
  * List all active Docker containers in the cluster.
@@ -264,7 +267,7 @@ docker.ps = function (grunt, options, gruntDone) {
     }
   );
 };
-docker.ps.description="List docker containers on every cluster node";
+docker.ps.description = "List docker containers on every cluster node";
 
 /**
  * Starts all Docker containers in the cluster.
@@ -277,7 +280,7 @@ docker.ps.description="List docker containers on every cluster node";
  *          done Callback to call when the requests are completed
  */
 docker.start = function (grunt, options, gruntDone) {
-docker.start.description="Start all containers on every cluster node";
+  docker.start.description = "Start all containers on every cluster node";
 
   /*
    * Function to start a container
@@ -362,7 +365,7 @@ docker.stop = function (grunt, options, gruntDone) {
     });
 
 };
-docker.stop.description="Stop all containers on every node";
+docker.stop.description = "Stop all containers on every node";
 
 /**
  * Removes all Docker containers in the cluster.
@@ -406,7 +409,7 @@ docker.rm = function (grunt, options, gruntDone) {
   });
 
 };
-docker.rm.description="Remove all containers on every cluster node";
+docker.rm.description = "Remove all containers on every cluster node";
 
 /**
  * Removes all Docker images in the cluster.
@@ -444,7 +447,7 @@ docker.rmi = function (grunt, options, gruntDone) {
     return gruntDone();
   });
 };
-docker.rmi.description="Remove all images on every cluster node";
+docker.rmi.description = "Remove all images on every cluster node";
 
 docker.images = function (grunt, options, gruntDone) {
   var images = {};  // {nodeId}
@@ -467,7 +470,7 @@ docker.images = function (grunt, options, gruntDone) {
   };
   utils.iterateOverClusterNodes(options, "ACTIVE", nodeIterator, iteratorStopped, true);
 }
-docker.images.description="List all images on every cluster node";
+docker.images.description = "List all images on every cluster node";
 
 /**
  * Tests all the Docker containers in the cluster
@@ -566,4 +569,4 @@ docker.test = function (grunt, options, done) {
     true
   );
 };
-docker.test.description="Test if containers on cluster nodes runs correctly";
+docker.test.description = "Test if containers on cluster nodes runs correctly";
