@@ -198,7 +198,7 @@ module.exports.iterateOverClusterNodes = function (options, status, iterator, it
   }
   client.getServers(queryOpt, function (err, nodes) {
     module.exports.handleErr(err, iteratorStopped, false);
-    // Extracts some data about the selected nodes and puts them back intonodes
+    // Extracts some data about the selected nodes and puts them back into nodes
     nodes = _.map(nodes, module.exports.preProcessNodeData.bind(options));
     // Calls the iterator for all the elements in data
     if (serial) {
@@ -241,7 +241,7 @@ module.exports.queryNode = function (options, serverId, callback) {
  * @returns {String} Name of the node
  */
 module.exports.nodeName = function (clusterName, nodeType, seq) {
-  return clusterName + "-" + nodeType + "-" + seq;
+  return clusterName + "-" + seq + "-" + nodeType;
 };
 
 /**
@@ -253,7 +253,7 @@ module.exports.nodeName = function (clusterName, nodeType, seq) {
  * @returns {String} Type of node
  */
 module.exports.nodeType = function (nodeName) {
-  return nodeName.split("-")[1];
+  return nodeName.split("-")[2];
 };
 
 module.exports.preProcessNodeData = function (node) {
