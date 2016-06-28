@@ -456,10 +456,9 @@ module.exports.iterateOverClusterDockerImages = function (grunt, options,
           if (err) {
             grunt.log.error(err);
           }
-          done();
         });
 
-        next();
+        return next();
       });
     },
     function (err) {

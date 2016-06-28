@@ -442,6 +442,7 @@ docker.rmi = function (grunt, options, gruntDone) {
 
   utils.iterateOverClusterDockerImages(grunt, options, removeIterator, function (err) {
     utils.handleErr(err, function (err) {
+      grunt.log.err(err.message);
     });
     grunt.log.ok("Completed removing images");
     return gruntDone();
