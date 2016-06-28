@@ -105,10 +105,10 @@ docker.run = function (grunt, options, done) {
    */
   var runIterator = function (image, next) {
 
-    if (!utils.isContainerToBeProcessed(grunt, image.node.type,
-        image.node.id, image.name, null)) {
-      return next();
-    }
+    // if (!utils.isContainerToBeProcessed(grunt, image.node.type,
+    //     image.node.id, image.name, null)) {
+    //   return next();
+    // }
 
     grunt.log.ok("Started creating and running the container from "
       + image.name + " on node " + image.node.name);
@@ -287,11 +287,11 @@ docker.start = function (grunt, options, gruntDone) {
    */
   var startIterator = function (container, next) {
 
-    if (!utils.isContainerToBeProcessed(grunt, container.node.type,
-        container.node.id, container.container.Image.match(/\/(.+)\:/)[1],
-        container.container.Id)) {
-      return next();
-    }
+    // if (!utils.isContainerToBeProcessed(grunt, container.node.type,
+    //     container.node.id, container.container.Image.match(/\/(.+)\:/)[1],
+    //     container.container.Id)) {
+    //   return next();
+    // }
     var containerId = container.container.Id;
     var containerName = container.container.Names[0];
     var containerImage = container.container.Image;
@@ -333,11 +333,11 @@ docker.stop = function (grunt, options, gruntDone) {
    */
   var stopIterator = function (container, next) {
 
-    if (!utils.isContainerToBeProcessed(grunt, container.node.type,
-        container.node.id, container.container.Image.match(/\/(.+)\:/)[1],
-        container.container.Id)) {
-      return next();
-    }
+    // if (!utils.isContainerToBeProcessed(grunt, container.node.type,
+    //     container.node.id, container.container.Image.match(/\/(.+)\:/)[1],
+    //     container.container.Id)) {
+    //   return next();
+    // }
     var containerId = container.container.Id;
     var containerName = container.container.Names[0];
     var containerImage = container.container.Image;
@@ -383,11 +383,11 @@ docker.rm = function (grunt, options, gruntDone) {
    * Function to remove a container
    */
   var removeIterator = function (container, next) {
-    if (!utils.isContainerToBeProcessed(grunt, container.node.type,
-        container.node.id, container.container.Image.match(/\/(.+)\:/)[1],
-        container.container.Id)) {
-      return next();
-    }
+    // if (!utils.isContainerToBeProcessed(grunt, container.node.type,
+    //     container.node.id, container.container.Image.match(/\/(.+)\:/)[1],
+    //     container.container.Id)) {
+    //   return next();
+    // }
 
     grunt.log.ok("Started removing container " + container.container.Id
       + "  on node " + container.node.address);
