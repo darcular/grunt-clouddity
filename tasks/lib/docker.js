@@ -368,6 +368,56 @@ docker.stop = function (grunt, options, gruntDone) {
 docker.stop.description = "Stop all containers on every node";
 
 /**
+ * Stops all Docker containers in the cluster.
+ *
+ * @param {Object}
+ *          grunt The Grunt instance
+ * @param {Object}
+ *          options The task parameters
+ * @param {Function}
+ *          done Callback to call when the requests are completed
+ */
+docker.term = function (grunt, options, gruntDone) {
+
+  /*
+   * Function to terminate a container
+   */
+  var termIterator = function (container, next) {
+
+    // if (!utils.isContainerToBeProcessed(grunt, container.node.type,
+    //     container.node.id, container.container.Image.match(/\/(.+)\:/)[1],
+    //     container.container.Id)) {
+    //   return next();
+    // }
+    var containerId = container.container.Id;
+    var containerName = container.container.Names[0];
+
+    grunt.log.ok("Started terminate container " + containerId + containerName
+      + "  on node " + container.node.name);
+    (new Docker(container.node.docker)).getContainer(container.container.Id)
+      .kill({"signal":"SIGTERM"}, function (err, data) {
+        if (err) {
+          return utils.handleErr(err, next, true);
+        } else {
+          return next();
+        }
+      });
+  };
+
+  grunt.log.ok("Started sending SIGTERM to containers");
+
+  utils.iterateOverClusterContainers(grunt, options, termIterator,
+    function (err) {
+      utils.handleErr(err, function (err) {
+      }, false);
+      grunt.log.ok("Completed sending SIGTERM to containers");
+      gruntDone();
+    });
+
+};
+docker.term.description = "Terminate containers gracefully by sending SIGTERM only";
+
+/**
  * Removes all Docker containers in the cluster.
  *
  * @param {Object}
