@@ -7,6 +7,7 @@ var logUpdate = require('log-update');
 var utils = require("../../utils/utils");
 
 var node = {};
+module.exports.node = node;
 
 node.create = function (grunt, options, gruntDone) {
   grunt.log.ok("Started creating node...");
@@ -242,7 +243,6 @@ node.dns = function (grunt, options, gruntDone) {
 };
 node.dns.description = "Build local DNS for all cluster nodes"
 
-module.exports.node = node;
 
 function composeNodesTable(nodes) {
   var nodesList = _.toArray(nodes);

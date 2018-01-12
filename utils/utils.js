@@ -4,7 +4,7 @@
 
 "use strict";
 
-var pkgcloud = require("pkgcloud"), _ = require("underscore"), async = require("async");
+var pkgcloud = require("pkgcloud"), async = require("async");
 var _ = require("underscore"), Docker = require("dockerode");
 
 /**
@@ -365,10 +365,6 @@ module.exports.iterateOverClusterContainers = function (grunt, options, iterator
       });
     },
     function (err) {
-      if (err) {
-        grunt.log.error(err);
-        return done(err);
-      }
       // For every container executes the iterator function and skips errors
       async.eachSeries(containers, iterator, function (err) {
         if (err) {
