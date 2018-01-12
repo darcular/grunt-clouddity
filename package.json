@@ -19,8 +19,7 @@
   "dependencies" : {
     "async": "^1.5.2",
     "cli-table": "^0.3.1",
-    "dockerode": "git+https://github.com/lmoran/dockerode#master",
-    "docker-modem": "git+https://github.com/darcular/docker-modem#master",
+    "dockerode": "git+https://github.com/darcular/dockerode#master",
     "log-update": "^1.0.2",
     "pkgcloud": "git+https://github.com/lmoran/pkgcloud#master",
     "underscore": "^1.8.3"
