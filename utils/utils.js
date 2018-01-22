@@ -7,6 +7,8 @@
 var pkgcloud = require("pkgcloud"), async = require("async");
 var _ = require("underscore"), Docker = require("dockerode");
 
+var VOLUME_SEP = "__", NODE_SEP = "-";
+
 /**
  * Logs an error (if existing) on the Grunt error log, and calls the callback with or
  * without the err as arguments(e.g. continue an iterator when error appears in one
@@ -465,4 +467,43 @@ module.exports.iterateOverClusterDockerImages = function (grunt, options,
     },
     false
   );
+};
+
+/**
+ * Compose the name of the volume given the name of the node to attach and the
+ * volume type name
+ *
+ * @param {String}
+ *          volumeType Type of the volume
+ * @param {String}
+ *          nodeName Name of the node
+ *
+ * @returns {String} Name of the node
+ */
+module.exports.volumeName = function(volumeType, nodeName) {
+  return volumeType + VOLUME_SEP + nodeName;
+};
+
+/**
+ * Returns the name of node given volume name
+ *
+ * @param {String}
+ *          volumeName Name of volume
+ *
+ * @returns {String} Name of the node
+ */
+module.exports.nodeNameFromVolumeName = function(volumeName) {
+  return volumeName.split(VOLUME_SEP) && volumeName.split(VOLUME_SEP)[1];
+};
+
+/**
+ * Returns the volume type given volume name
+ *
+ * @param {String}
+ *          volumeName Name of volume
+ *
+ * @returns {String} Generic name of the volume
+ */
+module.exports.volumeTypeFromVolumeName = function(volumeName) {
+  return volumeName.split(VOLUME_SEP) && volumeName.split(VOLUME_SEP)[0];
 };

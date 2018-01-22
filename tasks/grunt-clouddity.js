@@ -14,7 +14,8 @@ module.exports = function (grunt) {
   var funcModule = _.extend(
     require("./lib/node"),
     require("./lib/securityGroup"),
-    require("./lib/docker")
+    require("./lib/docker"),
+    require("./lib/volume")
   );
 
   /**
