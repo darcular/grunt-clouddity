@@ -243,6 +243,39 @@ node.dns = function (grunt, options, gruntDone) {
 };
 node.dns.description = "Build local DNS for all cluster nodes"
 
+node.exec = function (grunt, options, gruntDone) {
+  // Check configuration file
+  try {
+    var username = options.pkgcloud.client.sshusername;
+  } catch (err) {
+    grunt.fail.warn("user name for ssh has not been defined");
+    return gruntDone(err);
+  }
+  var nodeNameIndx = grunt.option('i');
+  console.log(nodeNameIndx);
+  var cmdStr = grunt.option('c');
+  console.log("Exec command: " + cmdStr);
+  var iterator = function(node, iterationDone){
+    if (nodeNameIndx && (!node.name.includes(nodeNameIndx)))
+      return iterationDone();
+    sshExec2(username, node.ipv4, cmdStr, function (err, stdout, stderr) {
+      grunt.log.ok("Start running cmd at " + node.name);
+      utils.handleErr(err, iterationDone, true);
+      console.log(stdout);
+      if(stderr)
+        console.log(stderr);
+      grunt.log.ok("Done running cmd at " + node.name);
+      return iterationDone();
+    });
+  };
+  var iteratorStopped = function (err) {
+    return err ? utils.handleErr(err, gruntDone, false) : gruntDone();
+  };
+  utils.iterateOverClusterNodes(options, "active", iterator, iteratorStopped, false);
+};
+node.exec.description ="Run a command on each node via ssh using flag -c";
+
+
 
 function composeNodesTable(nodes) {
   var nodesList = _.toArray(nodes);
@@ -300,4 +333,8 @@ function promptBeforeDestroy(callback) {
 
 function sshExec(username, address, cmd, callback) {
   exec(["ssh", '-o "StrictHostKeyChecking no"', username + "@" + address, "-C"].concat('"' + cmd + '"').join(" "), callback);
+}
+
+function sshExec2(username, address, cmd, callback) {
+  exec(["ssh", '-t -T', '-o "StrictHostKeyChecking no"', username + "@" + address, "-C"].concat('"' + cmd + '"').join(" "), callback);
 }

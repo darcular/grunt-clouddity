@@ -469,6 +469,18 @@ module.exports.iterateOverClusterDockerImages = function (grunt, options,
   );
 };
 
+module.exports.iterateOverVolumes = function(options, iterator, done) {
+
+  // Retrieves the active volumes
+  pkgcloud.blockstorage.createClient(options.pkgcloud.client).getVolumes(
+    function(err, volumes) {
+      module.exports.handleErr(err, done, false);
+      async.eachSeries(_.filter(volumes, function(volume) {
+        return _.pluck(options.volumetypes, "name").indexOf(module.exports.volumeTypeFromVolumeName(volume.name)) > -1;
+      }), iterator, done);
+    });
+};
+
 /**
  * Compose the name of the volume given the name of the node to attach and the
  * volume type name
