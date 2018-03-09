@@ -19,13 +19,13 @@ node.create = function (grunt, options, gruntDone) {
   var iterator = function (node, iterationDone) {
     var serverConfig = {
       tenantId: options.pkgcloud.client.tenantName,
-      security_groups: utils.composeClusterSecGrpNameList(options.cluster, node.securitygroups),
-      user_data: options.pkgcloud.user_data,
+      securityGroups: utils.composeClusterSecGrpNameList(options.cluster, node.securitygroups),
+      cloudConfig: options.pkgcloud.user_data,
       availability_zone: options.pkgcloud.availability_zone,
-      imageRef: node.imageRef,
-      flavorRef: node.flavorRef,
+      image: node.imageRef,
+      flavor: node.flavorRef,
       name: node.name,
-      key_name: options.pkgcloud.key_name
+      keyname: options.pkgcloud.key_name
     };
     client.createServer(serverConfig, function (err, result) {
       if (err)
